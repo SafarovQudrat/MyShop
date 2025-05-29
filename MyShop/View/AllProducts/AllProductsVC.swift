@@ -23,6 +23,7 @@ class AllProductsVC: UIViewController {
         self.tabBarController?.tabBar.isHidden = true
     }
     override func viewWillAppear(_ animated: Bool) {
+        
         products = CoreDataManager.shared.fetchProducts()
     }
     

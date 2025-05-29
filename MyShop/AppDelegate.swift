@@ -24,6 +24,12 @@ var window: UIWindow?
         return true
     }
 
+    
+    
+    
+   
+
+
    
 
     // MARK: - Core Data stack

@@ -40,7 +40,6 @@ class SaleHistoryVC: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         history = CoreDataManager.shared.fetchSale()
-        
         tableView.reloadData()
     }
     

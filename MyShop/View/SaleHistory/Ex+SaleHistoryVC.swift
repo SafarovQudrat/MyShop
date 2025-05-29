@@ -19,6 +19,7 @@ extension SaleHistoryVC:UITableViewDelegate,UITableViewDataSource{
         cell.nameLbl.numberOfLines = 0
         cell.nameLbl.font = .customFont(.regular, 16)
         cell.costLbl.textColor = .gray
+        
         let products =  ( history[indexPath.row].products as? Set<ProductCD>)?.map { $0 } ?? []
         cell.configureSaleHistory(sale: products,date:history[indexPath.row].date ?? Date(), summ: history[indexPath.row].totalCost)
         return cell

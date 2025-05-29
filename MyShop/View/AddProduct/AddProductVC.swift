@@ -184,6 +184,9 @@ class AddProductVC: UIViewController {
     
     func setUI() {
         if isEdit {
+            qrBtn.setTitle(product?.barcode ?? "", for: .normal)
+            qrBtn.setBackgroundImage(UIImage(named: ""), for: .normal)
+            qrBtn.isEnabled = false
             productNameTF.text = product?.name
             barcode = product?.barcode
             purchasePTF.text = String(describing: product?.purchasePrice)
@@ -207,7 +210,7 @@ class AddProductVC: UIViewController {
         view.endEditing(true)
     }
     @objc func saveTapped()  {
-       
+        
         guard let name = productNameTF.text, !name.isEmpty else {
             showAlert(message: "Mahsulot nomini kiriting.")
             return
@@ -244,6 +247,9 @@ class AddProductVC: UIViewController {
         
         if isEdit {
             CoreDataManager.shared.updateProduct(product!, category: category, barcode: barcode ?? "", name: name, purchasePrice: purchasePrice, salePrice: salePrice, totalProduct: totalProduct, unitType: unitType, validityPeriod: validityPeriod)
+            FirebaseManager.shared.updateProduct(productId: (product?.barcode)!, barcode: barcode ?? "", category: category, name: name, purchasePrice: purchasePrice, salePrice: salePrice, totalProduct: totalProduct, unitType: unitType, validityPeriod: validityPeriod) { error in
+                print("Error = \(String(describing: error?.localizedDescription))")
+            }
             
             showAlert("Succes", "Mahsulot muvafaqqiyatli o'zgartirildi") { [self] result in
                 guard let result = result else { return showAlert(message: "Alertdan nil qaytdi") }
@@ -252,8 +258,12 @@ class AddProductVC: UIViewController {
                 }
             }
         }else {
+            var productID = UUID().uuidString
             
-            CoreDataManager.shared.addProduct(barcode: barcode ?? "", category: category, name: name, purchasePrice: purchasePrice, salePrice: salePrice, totalProduct: totalProduct, unitType: unitType, validityPeriod: validityPeriod)
+            CoreDataManager.shared.addProduct(barcode: barcode ?? productID, category: category, name: name, purchasePrice: purchasePrice, salePrice: salePrice, totalProduct: totalProduct, unitType: unitType, validityPeriod: validityPeriod)
+            FirebaseManager.shared.addProduct(barcode: barcode ?? productID, category: category, name: name, purchasePrice: purchasePrice, salePrice: salePrice, totalProduct: totalProduct, unitType: unitType, validityPeriod: validityPeriod) { error in
+                print("Create error \(String(describing: error?.localizedDescription))")
+            }
             showAlert("Succes", "Mahsulot muvafaqqiyatli qo'shildi") { [self] result in
                 guard let result = result else { return showAlert(message: "Alertdan nil qaytdi") }
                 if result {

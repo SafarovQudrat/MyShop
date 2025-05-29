@@ -26,6 +26,8 @@ extension ProfileVC: UITableViewDelegate,UITableViewDataSource {
           print("About us Tapped")
       case .logOut:
           if let window = UIApplication.shared.windows.first {
+              UserDefaults.standard.removeObject(forKey: "dataFetched")
+              CoreDataManager.shared.deleteAllCoreData()
               cache.set(false, forKey: "isTabbar")
                  window.rootViewController = UINavigationController(rootViewController: LoginVC())
                  window.makeKeyAndVisible()

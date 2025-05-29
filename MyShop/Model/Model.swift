@@ -30,7 +30,7 @@ enum ProductUnit:String,CaseIterable {
 }
 
 struct Product {
-    var product:ProductCD
+    var barcode:String
     var count: Int
 }
 struct EachSale {

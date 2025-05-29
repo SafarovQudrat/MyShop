@@ -24,6 +24,7 @@ class CoreDataManager {
         product.purchasePrice = purchasePrice
         product.salePrice = salePrice
         product.totalProduct = totalProduct
+        product.remainingP = totalProduct
         product.unitType = unitType
         product.validityPeriod = validityPeriod
         product.addedDate = Date()
@@ -55,6 +56,26 @@ class CoreDataManager {
         context.delete(product)
         appDelegate.saveContext()
     }
+    
+    func deleteAllCoreData() {
+        let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+
+        let entities = ["Product", "Debt", "Sale"] // Entity nomlari
+
+        for entityName in entities {
+            let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
+            let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+
+            do {
+                try context.execute(deleteRequest)
+                try context.save()
+                print("\(entityName) uchun barcha ma'lumotlar o'chirildi.")
+            } catch {
+                print("Xatolik \(entityName) ni o'chirishda: \(error)")
+            }
+        }
+    }
+
     
 //    MARK: Debts
 
@@ -94,19 +115,40 @@ class CoreDataManager {
         guard let saleEntity = NSEntityDescription.entity(forEntityName: "SaleCD", in: context) else { return }
         let sale = SaleCD(entity: saleEntity, insertInto: context)
 
-        let products = eachSale.saleProducts.map { $0.product }
-        sale.products = NSSet(array: products)
+        // barcode lar orqali mos keluvchi ProductCD larni topish
+        var productObjects: [ProductCD] = []
+
+        for saleItem in eachSale.saleProducts {
+            let barcode = saleItem.barcode
+            let fetchRequest: NSFetchRequest<ProductCD> = ProductCD.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "barcode == %@", barcode)
+
+            if let result = try? context.fetch(fetchRequest), let product = result.first {
+                productObjects.append(product)
+            }
+        }
+
+        sale.products = NSSet(array: productObjects)
         sale.date = Date()
         sale.foyda = eachSale.foyda
         sale.totalCost = eachSale.summ
 
-        // Ombordagi maxsulot sonini yangilash
         for saleItem in eachSale.saleProducts {
-            saleItem.product.totalProduct -= Int64(saleItem.count)
+            let barcode = saleItem.barcode
+            let countToSubtract = Int64(saleItem.count)
+
+            let fetchRequest: NSFetchRequest<ProductCD> = ProductCD.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "barcode == %@", barcode)
+
+            if let result = try? context.fetch(fetchRequest), let product = result.first {
+                product.remainingP -= countToSubtract
+            }
         }
+
 
         appDelegate.saveContext()
     }
+
 
     
     func fetchSale() -> [SaleCD] {

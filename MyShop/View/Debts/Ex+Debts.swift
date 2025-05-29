@@ -12,6 +12,9 @@ extension DebtsVC:UITableViewDelegate,UITableViewDataSource{
         actionSheet.addAction(UIAlertAction(title: "Tahrirlash", style: .default, handler: { [self] _ in
             showEditAlert(debts[indexPath.row].name ?? "", "\(debts[indexPath.row].summ)") { [self] name, amount in
                 CoreDataManager.shared.updateDebt(debts[indexPath.row], newName: name, newAmount: Double(amount) ?? 0)
+                FirebaseManager.shared.updateDebt(debtId: debts[indexPath.row].name!, newName: name, newAmount: Double(amount) ?? 0) { error in
+                    print("Update debt error \(String(describing: error?.localizedDescription))")
+                }
                 debts = CoreDataManager.shared.fetchDebts()
                 tableView.reloadData()
             }
@@ -20,6 +23,9 @@ extension DebtsVC:UITableViewDelegate,UITableViewDataSource{
         // O‘chirish
         actionSheet.addAction(UIAlertAction(title: "O‘chirish", style: .destructive, handler: { [self] _ in
             CoreDataManager.shared.deleteDebts(debts[indexPath.row])
+            FirebaseManager.shared.deleteDebt(debtId: debts[indexPath.row].name!) { error in
+                print("Delete debt error")
+            }
             debts = CoreDataManager.shared.fetchDebts()
             tableView.reloadData()
         }))

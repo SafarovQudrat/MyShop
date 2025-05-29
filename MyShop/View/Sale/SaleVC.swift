@@ -1,5 +1,6 @@
 import UIKit
 import SnapKit
+import Firebase
 class SaleVC: UIViewController {
     private var backV: UIView = {
         let v = UIView()
@@ -53,10 +54,11 @@ class SaleVC: UIViewController {
         return s
     }()
     var products = EachSale(saleProducts: [], foyda: 0, summ: 0)
+    var soldProducts: [ProductCD] = []
     var totalPrice:Int = 0
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        fetchDataOnceIfNeeded()
         apparenceSettings()
         }
     
@@ -114,10 +116,10 @@ class SaleVC: UIViewController {
         let vc = AllProductsVC()
         self.navigationController?.pushViewController(vc, animated: true)
         vc.getProduct = { [self] product in
-            if let index = products.saleProducts.firstIndex(where: { $0.product.name == product.name }) {
+            if let index = products.saleProducts.firstIndex(where: { $0.barcode == product.barcode }) {
                 products.saleProducts[index].count += 1
             } else {
-                products.saleProducts.append(Product(product: product, count: 1))
+                products.saleProducts.append(Product(barcode: product.barcode!, count: 1))
             }
             updateTotalCost()
             tableView.reloadData()
@@ -131,10 +133,10 @@ class SaleVC: UIViewController {
             if matchedProducts.isEmpty {showInfoAlert(title: "Xatolik", message: "Bunday maxsulot topilmadi")}
 
             for product in matchedProducts {
-                if let index = products.saleProducts.firstIndex(where: { $0.product.name == product.name }) {
+                if let index = products.saleProducts.firstIndex(where: { $0.barcode == product.barcode }) {
                     products.saleProducts[index].count += 1
                 } else {
-                    products.saleProducts.append(Product(product: product, count: 1))
+                    products.saleProducts.append(Product(barcode: product.barcode!, count: 1))
                 }
             }
 
@@ -146,10 +148,118 @@ class SaleVC: UIViewController {
     
     @objc func saleTapped() {
         CoreDataManager.shared.addSale(from: products)
+        FirebaseManager.shared.addSale(date: Date(), foyda: products.foyda, totalCost: products.summ, saleProducts: products.saleProducts) { error in
+            print("add sale error \(String(describing: error?.localizedDescription))")
+        }
         showInfoAlert(title: "Success", message: "Maxsulot sotildi!")
         products.saleProducts = []
         totalCostLbl.text = "0 so'm"
         tableView.reloadData()
     }
     
+    
+    func fetchDataOnceIfNeeded() {
+        let hasFetched = UserDefaults.standard.bool(forKey: "dataFetched")
+
+        guard !hasFetched else {
+            print("Ma'lumotlar allaqachon olingan.")
+            return
+        }
+
+        let db = Firestore.firestore()
+        let group = DispatchGroup()
+
+        // 1. Products
+        group.enter()
+        db.collection("products").getDocuments(completion: { snapshot, error in
+            if let error = error {
+                print("Products xatosi: \(error)")
+                group.leave()
+                return
+            }
+
+            snapshot?.documents.forEach { doc in
+                let data = doc.data()
+                CoreDataManager.shared.addProduct(
+                    barcode: (data["barcode"] as? String) ?? "",
+                    category: data["category"] as? String ?? "",
+                    name: data["name"] as? String ?? "",
+                    purchasePrice: data["purchasePrice"] as? Double ?? 0 ,
+                    salePrice: data["salePrice"] as? Double ?? 0 ,
+                    totalProduct: Int64(data["totalProduct"] as? Double ?? 0),
+                    unitType: data["unitType"] as? String ?? "",
+                    validityPeriod: data["validityPeriod"] as? Date ?? Date()
+                )
+            }
+
+            print("Products yuklandi.")
+            group.leave()
+        })
+
+        // 2. Sales
+        group.enter()
+        db.collection("sales").getDocuments(completion: { snapshot, error in
+            if let error = error {
+                print("Sales xatosi: \(error)")
+                group.leave()
+                return
+            }
+
+            snapshot?.documents.forEach { doc in
+                let data = doc.data()
+                
+                if let productDicts = data["products"] as? [[String: Any]] {
+                    var products: [Product] = []
+                    for dict in productDicts {
+                        let product = Product(barcode: dict["product"] as! String,count: dict["count"] as! Int)
+                        products.append(product)
+                    }
+
+                    let eachSale = EachSale(
+                        saleProducts: products,
+                        foyda: data["foyda"] as? Double ?? 0.0,
+                        summ: data["summ"] as? Double ?? 0.0
+                    )
+
+                    CoreDataManager.shared.addSale(from: eachSale)
+                }
+            }
+
+            print("Sales yuklandi.")
+            group.leave()
+        })
+
+
+        // 3. Debts
+        group.enter()
+        db.collection("debts").getDocuments { snapshot, error in
+            if let error = error {
+                print("Debts xatosi: \(error)")
+                group.leave()
+                return
+            }
+
+            snapshot?.documents.forEach { doc in
+                let data = doc.data()
+                CoreDataManager.shared.addDebts(
+                    name: data["name"] as? String ?? "",
+                    amount: data["amount"] as? Double ?? 0.0,
+                    debtDate: (data["debtDate"] as? Timestamp)?.dateValue() ?? Date()
+                )
+            }
+
+            print("Debts yuklandi.")
+            group.leave()
+        }
+
+        // Barchasi tugagach
+        group.notify(queue: .main) {
+            UserDefaults.standard.set(true, forKey: "dataFetched")
+            print("Barcha ma'lumotlar saqlandi va flag o'rnatildi.")
+        }
+    }
+
+    
 }
+
+

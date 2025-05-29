@@ -18,6 +18,9 @@ extension ProductsVC: UITableViewDelegate,UITableViewDataSource {
         // O‘chirish
         actionSheet.addAction(UIAlertAction(title: "O‘chirish", style: .destructive, handler: { [self] _ in
             CoreDataManager.shared.deleteProduct(products[indexPath.row])
+            FirebaseManager.shared.deleteProduct(productId: products[indexPath.row].name!) { error in
+                print("Delete product error \(String(describing: error?.localizedDescription))")
+            }
             products = CoreDataManager.shared.fetchProducts()
             tableView.reloadData()
         }))

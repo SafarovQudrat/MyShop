@@ -15,7 +15,11 @@ extension SaleVC: UITableViewDelegate,UITableViewDataSource {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "SaleTVC", for: indexPath) as? SaleTVC else {return UITableViewCell()}
         cell.delegate = self
-        cell.configureSale(product: products.saleProducts[indexPath.row].product, count: products.saleProducts[indexPath.row].count)
+        let targetBarcode = products.saleProducts[indexPath.row].barcode
+        let allProducts = CoreDataManager.shared.fetchProducts()
+        soldProducts = allProducts.filter { $0.barcode == targetBarcode }
+
+        cell.configureSale(product: soldProducts[indexPath.row], count: products.saleProducts[indexPath.row].count)
         
         return cell
     }
@@ -37,8 +41,9 @@ extension SaleVC: SaleTVCDelegate {
     }
 
     func updateTotalCost() {
-        let total = products.saleProducts.reduce(0) { $0 + (Int($1.product.salePrice) * $1.count) }
-        let totalSold = products.saleProducts.reduce(0) { $0 + (Int($1.product.purchasePrice) * $1.count) }
+        
+        let total = soldProducts.reduce(into: 0) { $0 + (Int($1.salePrice) * Int($1.count)) }
+        let totalSold = soldProducts.reduce(into: 0) { $0 + (Int($1.purchasePrice) * Int($1.count)) }
         products.foyda = Double(total - totalSold)
         products.summ = Double(total)
         costLbl.text = "\(total) so'm"

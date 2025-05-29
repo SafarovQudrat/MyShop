@@ -109,10 +109,12 @@ class DebtsVC: UIViewController {
         present(alert, animated: true)
     }
 
-    
     @objc func addTapped() {
         showAddDebtAlert { [self] name, amount in
             CoreDataManager.shared.addDebts(name: name, amount: Double(amount) ?? 0, debtDate: Date())
+            FirebaseManager.shared.addDebt(name: name, amount: Double(amount) ?? 0, debtDate: Date()) { result in
+                print("Add debt error \(String(describing: result?.localizedDescription))")
+            }
             debts = CoreDataManager.shared.fetchDebts()
             tableView.reloadData()
         }

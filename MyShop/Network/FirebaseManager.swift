@@ -135,14 +135,14 @@ class FirebaseManager {
     // Note: EachSale va saleProducts tuzilmasini to‘liq bilmasam ham, umumiy tuzilma asosida yozdim.
     // saleProducts ichida productId va count bor deb taxmin qildim.
 
-    func addSale(date: Date, foyda: Double, totalCost: Double, saleProducts: [(productId: String, count: Int64)], completion: @escaping (Error?) -> Void) {
+    func addSale(date: Date, foyda: Double, totalCost: Double, saleProducts: [Product], completion: @escaping (Error?) -> Void) {
 
         // Sale document data
         let saleData: [String: Any] = [
             "date": Timestamp(date: date),
             "foyda": foyda,
             "totalCost": totalCost,
-            "products": saleProducts.map { ["productId": $0.productId, "count": $0.count] }
+            "products": saleProducts.map { ["productId": $0.barcode, "count": $0.count] }
         ]
 
         db.collection("sales").addDocument(data: saleData) { error in
@@ -152,7 +152,7 @@ class FirebaseManager {
                 // Update totalProduct count in products collection
                 let batch = self.db.batch()
                 for saleProduct in saleProducts {
-                    let productRef = self.db.collection("products").document(saleProduct.productId)
+                    let productRef = self.db.collection("products").document(saleProduct.barcode)
                     batch.updateData(["totalProduct": FieldValue.increment(Int64(-saleProduct.count))], forDocument: productRef)
                 }
                 batch.commit { batchError in
